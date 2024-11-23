@@ -4,7 +4,6 @@ import { create } from './create';
 import { invoke } from '@tauri-apps/api';
 import { useAppConfigStore } from './useAppConfigStore';
 import { useMiningStore } from './useMiningStore';
-import * as Sentry from '@sentry/react';
 import { addToast } from '@app/components/ToastStack/useToastStore';
 
 interface AppState {
@@ -23,6 +22,7 @@ interface AppState {
     isSettingsOpen: boolean;
     setIsSettingsOpen: (value: boolean) => void;
     isSettingUp: boolean;
+    setIsSettingUp: (value: boolean) => void;
     setSettingUpFinished: () => Promise<void>;
     externalDependencies: ExternalDependency[];
     fetchExternalDependencies: () => Promise<void>;
@@ -31,6 +31,8 @@ interface AppState {
     fetchApplicationsVersions: () => Promise<void>;
     fetchApplicationsVersionsWithRetry: () => Promise<void>;
     updateApplicationsVersions: () => Promise<void>;
+    issueReference?: string;
+    setIssueReference: (value: string) => void;
 }
 
 export const useAppStateStore = create<AppState>()((set, getState) => ({
@@ -57,6 +59,7 @@ export const useAppStateStore = create<AppState>()((set, getState) => ({
     isSettingsOpen: false,
     setIsSettingsOpen: (value: boolean) => set({ isSettingsOpen: value }),
     isSettingUp: true,
+    setIsSettingUp: (value: boolean) => set({ isSettingUp: value }),
     setSettingUpFinished: async () => {
         set({ isSettingUp: false });
         setAnimationState('showVisual');
@@ -75,7 +78,6 @@ export const useAppStateStore = create<AppState>()((set, getState) => ({
             const applications_versions = await invoke('get_applications_versions');
             set({ applications_versions });
         } catch (error) {
-            Sentry.captureException(error);
             console.error('Error getting applications versions', error);
         }
     },
@@ -91,7 +93,6 @@ export const useAppStateStore = create<AppState>()((set, getState) => ({
                 await getState().fetchApplicationsVersions();
                 retries--;
             } catch (error) {
-                Sentry.captureException(error);
                 console.error('Error getting applications versions', error);
             }
         }
@@ -101,7 +102,6 @@ export const useAppStateStore = create<AppState>()((set, getState) => ({
             await invoke('update_applications');
             await getState().fetchApplicationsVersions();
         } catch (error) {
-            Sentry.captureException(error);
             console.error('Error updating applications versions', error);
         }
     },
@@ -111,10 +111,10 @@ export const useAppStateStore = create<AppState>()((set, getState) => ({
             const externalDependencies = await invoke('get_external_dependencies');
             set({ externalDependencies });
         } catch (error) {
-            Sentry.captureException(error);
             console.error('Error loading missing external dependencies', error);
         }
     },
     missingExternalDependencies: [],
     loadExternalDependencies: (externalDependencies: ExternalDependency[]) => set({ externalDependencies }),
+    setIssueReference: (issueReference) => set({ issueReference }),
 }));
