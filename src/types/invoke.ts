@@ -43,6 +43,7 @@ declare module '@tauri-apps/api/tauri' {
     function invoke(param: 'get_max_consumption_levels'): Promise<MaxConsumptionLevels>;
     function invoke(param: 'set_display_mode', payload: { displayMode: displayMode }): Promise<void>;
     function invoke(param: 'get_seed_words'): Promise<string[]>;
+    function invoke(param: 'get_monero_seed_words'): Promise<string[]>;
     function invoke(param: 'get_applications_versions'): Promise<ApplicationsVersions>;
     function invoke(param: 'set_monero_address', payload: { moneroAddress: string }): Promise<void>;
     function invoke(param: 'send_feedback', payload: { feedback: string; includeLogs: boolean }): Promise<string>;
@@ -68,6 +69,10 @@ declare module '@tauri-apps/api/tauri' {
     function invoke(param: 'fetch_tor_bridges'): Promise<string[]>;
     function invoke(param: 'get_tor_entry_guards'): Promise<string[]>;
     function invoke(param: 'set_visual_mode', payload: { enabled: boolean }): Promise<void>;
+    function invoke(
+        param: 'set_show_experimental_settings',
+        payload: { showExperimentalSettings: boolean }
+    ): Promise<void>;
     function invoke(
         param: 'set_monerod_config',
         payload: {

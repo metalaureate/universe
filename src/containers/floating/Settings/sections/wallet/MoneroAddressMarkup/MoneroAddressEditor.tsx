@@ -91,7 +91,13 @@ const MoneroAddressEditor = ({ initialAddress, onApply }: MoneroAddressEditorPro
                         </IconButton>
                     </>
                 ) : (
-                    <IconButton onClick={() => copyToClipboard(address)}>
+                    <IconButton
+                        size="small"
+                        onClick={(e) => {
+                            e.preventDefault();
+                            copyToClipboard(address);
+                        }}
+                    >
                         {!isCopied ? <IoCopyOutline /> : <IoCheckmarkOutline />}
                     </IconButton>
                 )}

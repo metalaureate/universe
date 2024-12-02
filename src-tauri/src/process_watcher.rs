@@ -1,5 +1,6 @@
 use crate::binaries::{Binaries, BinaryResolver};
 use crate::process_adapter::{HealthStatus, ProcessAdapter, ProcessInstance, StatusMonitor};
+use futures_util::future::FusedFuture;
 use log::{error, info, warn};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -18,6 +19,7 @@ pub struct ProcessWatcher<TAdapter: ProcessAdapter> {
     pub health_timeout: tokio::time::Duration,
     pub expected_startup_time: tokio::time::Duration,
     pub(crate) status_monitor: Option<TAdapter::StatusMonitor>,
+    pub stop_on_exit_codes: Vec<i32>,
 }
 
 impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
@@ -30,6 +32,7 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
             health_timeout: tokio::time::Duration::from_secs(4),
             expected_startup_time: tokio::time::Duration::from_secs(20),
             status_monitor: None,
+            stop_on_exit_codes: Vec::new(),
         }
     }
 }
@@ -51,6 +54,11 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
         log_path: PathBuf,
         binary: Binaries,
     ) -> Result<(), anyhow::Error> {
+        info!(target: LOG_TARGET, "App shutdown triggered or terminated status for {} = {} | {}", self.adapter.name(),app_shutdown.is_triggered(),app_shutdown.is_terminated());
+        if app_shutdown.is_terminated() || app_shutdown.is_triggered() {
+            return Ok(());
+        }
+
         let name = self.adapter.name().to_string();
         if self.watcher_task.is_some() {
             warn!(target: LOG_TARGET, "Tried to start process watcher for {} twice", name);
@@ -78,6 +86,7 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
 
         let expected_startup_time = self.expected_startup_time;
         let mut app_shutdown: ShutdownSignal = app_shutdown.clone();
+        let stop_on_exit_codes = self.stop_on_exit_codes.clone();
         self.watcher_task = Some(tauri::async_runtime::spawn(async move {
             child.start().await?;
             let mut uptime = Instant::now();
@@ -92,11 +101,10 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
                       _ = watch_timer.tick() => {
                         let status_monitor3 = status_monitor2.clone();
 
-                        let exit_code = do_health_check(&mut child, status_monitor3, name.clone(), &mut uptime, expected_startup_time, health_timeout, app_shutdown.clone(), inner_shutdown.clone(), &mut warning_count).await?;
-                            if exit_code != 0 {
+                        let exit_code = do_health_check(&mut child, status_monitor3, name.clone(), &mut uptime, expected_startup_time, health_timeout, app_shutdown.clone(), inner_shutdown.clone(), &mut warning_count, &stop_on_exit_codes).await?;
+                        if exit_code != 0 {
                             return Ok(exit_code);
-
-                        }
+                                                }
                             //    break;
                       },
                     _ = inner_shutdown.wait() => {
@@ -118,6 +126,10 @@ impl<TAdapter: ProcessAdapter> ProcessWatcher<TAdapter> {
         } else {
             false
         }
+    }
+
+    pub fn is_pid_file_exists(&self, base_path: PathBuf) -> bool {
+        self.adapter.pid_file_exisits(base_path)
     }
 
     pub async fn wait_ready(&self) -> Result<(), anyhow::Error> {
@@ -153,6 +165,7 @@ async fn do_health_check<T: StatusMonitor>(
     app_shutdown: ShutdownSignal,
     inner_shutdown: ShutdownSignal,
     warning_count: &mut u32,
+    stop_on_exit_codes: &[i32],
 ) -> Result<i32, anyhow::Error> {
     let mut is_healthy = false;
 
@@ -203,9 +216,12 @@ async fn do_health_check<T: StatusMonitor>(
             match child.stop().await {
                 Ok(exit_code) => {
                     if exit_code != 0 {
-                        error!(target: LOG_TARGET, "{} exited with error code: {}", name, exit_code);
-                        // Do not restart on non-zero exit code. This will just keep happening.
-                        return Ok(exit_code);
+                        if stop_on_exit_codes.contains(&exit_code) {
+                            return Ok(exit_code);
+                        }
+                        warn!(target: LOG_TARGET, "{} exited with error code: {}, restarting because it is not a listed exit code to list for", name, exit_code);
+
+                        // return Ok(exit_code);
                     } else {
                         info!(target: LOG_TARGET, "{} exited successfully", name);
                     }

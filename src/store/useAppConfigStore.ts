@@ -32,6 +32,7 @@ interface Actions {
     setMonerodConfig: (use_monero_fail: boolean, monero_nodes: string[]) => Promise<void>;
     setTheme: (theme: displayMode) => Promise<void>;
     setVisualMode: (enabled: boolean) => void;
+    setShowExperimentalSettings: (showExperimentalSettings: boolean) => Promise<void>;
 }
 
 type AppConfigStoreState = State & Actions;
@@ -53,11 +54,13 @@ const initialState: State = {
     custom_power_levels_enabled: true,
     use_tor: true,
     auto_update: false,
+    monero_address_is_generated: false,
     mmproxy_use_monero_fail: false,
     mmproxy_monero_nodes: ['https://xmr-01.tari.com'],
     visual_mode: true,
     custom_max_cpu_usage: undefined,
     custom_max_gpu_usage: [],
+    show_experimental_settings: false,
 };
 
 export const useAppConfigStore = create<AppConfigStoreState>()((set, getState) => ({
@@ -276,6 +279,15 @@ export const useAppConfigStore = create<AppConfigStoreState>()((set, getState) =
             console.error('Could not set visual mode', e);
             appStateStore.setError('Could not change visual mode');
             set({ visual_mode: !enabled });
+        });
+    },
+    setShowExperimentalSettings: async (showExperimentalSettings) => {
+        set({ show_experimental_settings: showExperimentalSettings });
+        invoke('set_show_experimental_settings', { showExperimentalSettings }).catch((e) => {
+            const appStateStore = useAppStateStore.getState();
+            console.error('Could not set show experimental settings', e);
+            appStateStore.setError('Could not change experimental settings');
+            set({ show_experimental_settings: !showExperimentalSettings });
         });
     },
 }));
