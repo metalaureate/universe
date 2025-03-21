@@ -24,7 +24,6 @@ While this release is chock full of improvements, Tari contributors aren't stopp
 😉 Much more
 
 See you in the Tari Universe 💜🐢
-
 __
 
 # TARI UNIVERSE v0.9.817: The Path Less Traveled
