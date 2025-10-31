@@ -1,0 +1,31 @@
+
+app:
+  name: "Tari Universe (Alpha)"
+  window_title: "Tari Universe (Alpha) | Testnet"
+  executable_path: ""  # Set this based on your platform
+  
+  startup_wait: 10
+  
+  window_width: 1300
+  window_height: 731
+
+test:
+  screenshot_dir: "qa-automation/screenshots"
+  
+  default_timeout: 30
+  
+  max_retries: 3
+  retry_delay: 2
+  
+  pause: 0.5  # Pause between PyAutoGUI actions
+  fail_safe: true  # Enable fail-safe (move mouse to corner to abort)
+
+image_recognition:
+  confidence: 0.8  # Confidence threshold for image matching (0.0 to 1.0)
+  grayscale: false  # Use grayscale for faster matching
+  
+test_data:
+  mining_modes:
+    - "Eco"
+    - "Ludicrous"
+    - "Custom"
