@@ -21,9 +21,10 @@
 // USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::sync::LazyLock;
+use std::panic;
 
 use anyhow::Error;
-use log::{error, info};
+use log::{error, info, warn};
 use psp::monitor::{PowerMonitor, PowerState};
 use tokio::sync::watch;
 
@@ -48,9 +49,21 @@ impl SystemStatus {
 
     pub fn start_listener(&self) -> PowerMonitor {
         let power_monitor = PowerMonitor::new();
-        let _unused = power_monitor.start_listening().inspect_err(|e| {
-            error!(target: LOG_TARGET, "Failed to start power monitor: {e:?}");
-        });
+        let result = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            power_monitor.start_listening()
+        }));
+        
+        match result {
+            Ok(Ok(_)) => {
+                info!(target: LOG_TARGET, "Power monitor started successfully");
+            }
+            Ok(Err(e)) => {
+                error!(target: LOG_TARGET, "Failed to start power monitor: {e:?}");
+            }
+            Err(e) => {
+                warn!(target: LOG_TARGET, "Power monitor panicked during initialization (likely DBus issue): {e:?}");
+            }
+        }
 
         power_monitor
     }
